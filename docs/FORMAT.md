@@ -19,9 +19,9 @@ Ce document sépare les faits confirmés des hypothèses afin d'éviter de trans
 Deux régions AUTOSAVE ont été isolées par comparaison différentielle entre comptes :
 
 - objet `0x100BFFEE` ;
-- field hash `0x18C6F574`, largeur 16 octets.
+- field hash `0x18C6F574` (= `CRC32("rand")`), largeur 16 octets.
 
-L'objet `0x100BFFEE` est de forte entropie et varie fortement entre plateformes/comptes. Son contenu n'est pas interprété ici. Le champ 16 octets varie également entre comptes.
+L'objet `0x100BFFEE` est de forte entropie et varie fortement entre plateformes/comptes. Son contenu n'est pas interprété ici. Le champ 16 octets varie également entre comptes. Son hash correspond à la chaîne `rand`, mais sa sémantique exacte dans cette sauvegarde reste inconnue ; le projet le traite donc comme opaque.
 
 Le projet traite ces données comme **opaque account material**. Il ne prétend pas qu'elles contiennent directement le SteamID64.
 
