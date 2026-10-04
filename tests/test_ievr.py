@@ -25,6 +25,11 @@ from ievr.pc import (
     rebuild_from_template,
 )
 from ievr.switch import SWITCH_MAGIC, pack_switch_blob_experimental, unpack_switch_blob
+from ievr.steam import (
+    STEAMID64_INDIVIDUAL_BASE,
+    steam_id64_from_account_id,
+    validate_steam_id64,
+)
 
 
 def field(h: int, width: int, payload: bytes) -> bytes:
@@ -84,6 +89,20 @@ def switch_wrapper(unpacked: bytes, name: str) -> bytes:
     struct.pack_into("<I", header, 0x04, crc32(header[8:16]))
     wrapper = bytes(header) + region + trailer
     return game_xor(wrapper, crc32(name.encode()))
+
+
+class SteamIdTests(unittest.TestCase):
+    def test_account_id_to_steam_id64(self):
+        account_id = 123456789
+        expected = STEAMID64_INDIVIDUAL_BASE + account_id
+        self.assertEqual(steam_id64_from_account_id(account_id), expected)
+        self.assertEqual(validate_steam_id64(str(expected)), str(expected))
+
+    def test_invalid_account_id_is_rejected(self):
+        with self.assertRaises(ValueError):
+            steam_id64_from_account_id(0)
+        with self.assertRaises(ValueError):
+            validate_steam_id64("not-a-steamid")
 
 
 class CodecTests(unittest.TestCase):
