@@ -18,7 +18,9 @@ PARENT_LENGTH_DELTAS: dict[int, int] = {
     0x1019FFEE: 56,
 }
 IDENTITY_OBJECT = 0x100BFFEE
-GUID_HASH = 0x18C6F574
+RAND_FIELD_HASH = 0x18C6F574  # CRC32("rand"); exact game semantics remain unknown.
+# Historical public/CLI terminology kept for compatibility with the tested "guid" mode.
+GUID_HASH = RAND_FIELD_HASH
 
 
 @dataclass(frozen=True)
@@ -124,7 +126,7 @@ def transplant_pc_identity(
 
     full: object 0x100BFFEE + field 0x18C6F574 (recommended; confirmed in game)
     object: object only (confirmed in game)
-    guid: GUID-like field only (confirmed in game)
+    guid: 16-byte 0x18C6F574/"rand" field only (confirmed in game)
     """
     if mode not in {"full", "object", "guid"}:
         raise ValueError("identity mode must be one of: full, object, guid")
@@ -144,7 +146,7 @@ def transplant_pc_identity(
         sw_positions = _field_positions(switch_progress_pc_layout, GUID_HASH, 16)
         pc_positions = _field_positions(target_pc_autosave, GUID_HASH, 16)
         if len(sw_positions) != 1 or sw_positions != pc_positions:
-            raise ValueError("GUID-like field 0x18C6F574 is not uniquely aligned")
+            raise ValueError("16-byte rand field 0x18C6F574 is not uniquely aligned")
         p = pc_positions[0]
         out[p + 8:p + 24] = target_pc_autosave[p + 8:p + 24]
 
@@ -157,7 +159,7 @@ def identity_fingerprint(pc_save: PCSave) -> IdentityFingerprint:
     start, size = objects[IDENTITY_OBJECT]
     positions = _field_positions(auto, GUID_HASH, 16)
     if len(positions) != 1:
-        raise ValueError("GUID-like field 0x18C6F574 is not unique")
+        raise ValueError("16-byte rand field 0x18C6F574 is not unique")
     p = positions[0]
     guid = auto[p + 8:p + 24].hex()
     obj_hash = hashlib.sha256(auto[start:start + 8 + size]).hexdigest()
