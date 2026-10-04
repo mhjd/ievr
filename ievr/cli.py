@@ -17,15 +17,22 @@ from .convert import (
 )
 from .pc import SYSTEMLIVE, USERDATALIVE, parse_pc_file, rebuild_from_template
 from .switch import _member_bytes, pack_switch_blob_experimental, read_switch_save
+from .steam import (
+    detect_active_steam_account_id,
+    detect_active_steam_id64,
+    resolve_steam_id,
+    steam_id64_from_account_id,
+    validate_steam_id64,
+)
 
 
-def steam_id64(value: str) -> str:
-    if not value.isdigit() or len(value) != 17:
-        raise argparse.ArgumentTypeError("SteamID64 must be a 17-digit decimal number")
-    n = int(value)
-    if not 0 < n < 2**64:
-        raise argparse.ArgumentTypeError("SteamID64 is outside uint64 range")
-    return value
+def steam_id_arg(value: str) -> str:
+    if value.lower() == "auto":
+        return "auto"
+    try:
+        return validate_steam_id64(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 def _write_manifest(path: Path, data: dict) -> None:
@@ -56,11 +63,12 @@ def cmd_switch_to_pc(args: argparse.Namespace) -> int:
         copied_system = out_dir / SYSTEMLIVE
         shutil.copyfile(system_path, copied_system)
 
+    resolved_steam_id = resolve_steam_id(args.steam_id)
     fp = identity_fingerprint(target)
     manifest = {
         "direction": "switch-to-pc",
         "tested_game_version": "7.1.2",
-        "steam_id64": args.steam_id,
+        "steam_id64": resolved_steam_id,
         "steam_id_note": (
             "The SteamID labels the intended target account. Account binding is currently "
             "derived from --pc-template, not calculated from SteamID64 alone."
@@ -82,9 +90,30 @@ def cmd_switch_to_pc(args: argparse.Namespace) -> int:
     if copied_system:
         print(f"Copied {copied_system}")
     print(f"Identity mode: {args.identity_mode}")
-    if args.steam_id:
-        print(f"Target SteamID64: {args.steam_id}")
+    if resolved_steam_id:
+        print(f"Target SteamID64: {resolved_steam_id}")
     print("Validation: OK")
+    return 0
+
+
+def cmd_steam_id(args: argparse.Namespace) -> int:
+    if args.account_id is not None:
+        account_id = args.account_id
+        value = steam_id64_from_account_id(account_id)
+        print(f"AccountID: {account_id}")
+        print(f"SteamID64: {value}")
+        return 0
+
+    account_id = detect_active_steam_account_id()
+    value = detect_active_steam_id64()
+    if account_id is None or value is None:
+        raise ValueError(
+            "could not detect the active Steam account. "
+            "This command reads HKCU\\Software\\Valve\\Steam\\ActiveProcess\\ActiveUser "
+            "and therefore requires Windows with Steam running and logged in."
+        )
+    print(f"AccountID: {account_id}")
+    print(f"SteamID64: {value}")
     return 0
 
 
@@ -160,7 +189,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("switch_save", help="Switch save ZIP or extracted folder")
     p.add_argument("--pc-template", required=True, help="native USERDATALIVE created by the target account")
     p.add_argument("--system-template", help="optional native SYSTEMLIVE from the same target account")
-    p.add_argument("--steam-id", type=steam_id64, help="17-digit SteamID64 of the intended target account")
+    p.add_argument(
+        "--steam-id",
+        type=steam_id_arg,
+        help="17-digit SteamID64 of the intended target account, or 'auto' on Windows",
+    )
     p.add_argument(
         "--identity-mode",
         choices=("full", "object", "guid"),
@@ -170,6 +203,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output", default="converted", help="output folder (default: converted)")
     p.add_argument("--force", action="store_true", help="overwrite an existing output USERDATALIVE")
     p.set_defaults(func=cmd_switch_to_pc)
+
+    p = sub.add_parser("steam-id", help="show the active SteamID64 or convert a userdata AccountID")
+    p.add_argument(
+        "--account-id",
+        type=int,
+        help="32-bit AccountID, e.g. the numeric folder name under Steam\\userdata",
+    )
+    p.set_defaults(func=cmd_steam_id)
 
     p = sub.add_parser("inspect-pc", help="validate and inspect a PC save")
     p.add_argument("path")
