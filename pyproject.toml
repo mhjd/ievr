@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ievr-save-converter"
+version = "0.1.0"
+description = "Inazuma Eleven: Victory Road 7.1.2 Switch/PC save conversion tools"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "mhjd"}]
+dependencies = []
+
+[project.optional-dependencies]
+fast = ["numpy>=1.23"]
+
+[project.scripts]
+ievr-convert = "ievr.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ievr*"]
