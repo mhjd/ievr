@@ -7,7 +7,7 @@ name = "ievr-save-converter"
 version = "0.1.0"
 description = "Inazuma Eleven: Victory Road 7.1.2 Switch/PC save conversion tools"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "mhjd"}]
 dependencies = []
