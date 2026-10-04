@@ -35,7 +35,7 @@ Mais la liaison binaire est actuellement obtenue à partir de `--pc-template`, c
 
 ## Installation
 
-Python 3.9+ suffit. NumPy est facultatif mais accélère énormément le chiffrement/déchiffrement des fichiers de ~12 Mo.
+Python 3.10+ suffit. NumPy est facultatif mais accélère énormément le chiffrement/déchiffrement des fichiers de ~12 Mo.
 
 ```bash
 python -m pip install .
@@ -90,19 +90,47 @@ Le chemin peut dépendre du runtime. Si nécessaire, utilise **Process Monitor**
 
 ### 3. Trouver son SteamID64
 
-Le SteamID64 est un entier décimal de 17 chiffres, par exemple :
+Le SteamID64 est un entier décimal de 17 chiffres. Le plus simple est d'utiliser le helper intégré.
 
-```text
-76561198xxxxxxxxx
+Avec Steam lancé sous **le compte cible** sur Windows :
+
+```powershell
+ievr-convert steam-id
 ```
 
-Méthodes simples :
+La commande lit :
 
-1. ouvre ton profil Steam dans un navigateur et copie l'URL ; si elle ressemble à `https://steamcommunity.com/profiles/76561198...`, le nombre est directement le SteamID64 ;
-2. si tu utilises une URL personnalisée `/id/nom`, un outil comme **steamid.io** peut résoudre le SteamID64 ;
-3. techniquement, c'est l'identifiant retourné au jeu par l'API Steamworks `ISteamUser::GetSteamID()`.
+```text
+HKCU\Software\Valve\Steam\ActiveProcess\ActiveUser
+```
 
-Le SteamID fourni à l'outil doit correspondre au compte qui a créé le `--pc-template`.
+Steam y stocke l'**AccountID 32 bits** du compte actif. L'outil affiche à la fois cet AccountID et le SteamID64 correspondant.
+
+Tu peux aussi partir du nom de dossier numérique sous Steam :
+
+```text
+C:\Program Files (x86)\Steam\userdata\123456789\
+```
+
+puis exécuter :
+
+```powershell
+ievr-convert steam-id --account-id 123456789
+```
+
+Pour un compte Steam individuel standard :
+
+```text
+SteamID64 = 76561197960265728 + AccountID
+```
+
+Si l'URL de ton profil ressemble à `steamcommunity.com/profiles/76561198...`, ce nombre de 17 chiffres est déjà le SteamID64.
+
+Pendant la conversion, tu peux fournir explicitement le nombre avec `--steam-id 76561198XXXXXXXXX`, ou demander la détection automatique avec `--steam-id auto`.
+
+Le SteamID fourni ou détecté doit correspondre au compte qui a créé le `--pc-template`.
+
+**Important :** l'outil ne calcule pas encore les blobs de liaison du jeu à partir du seul SteamID64. Le SteamID est enregistré dans le manifeste pour identifier la cible ; le matériel binaire réellement nécessaire reste transplanté depuis le `--pc-template` natif.
 
 ### 4. Convertir
 
@@ -110,7 +138,7 @@ Le SteamID fourni à l'outil doit correspondre au compte qui a créé le `--pc-t
 ievr-convert switch-to-pc save_switch.zip \
   --pc-template ./002AB8F4-USERDATALIVE \
   --system-template ./002AB8F4-SYSTEMLIVE \
-  --steam-id 76561198XXXXXXXXX \
+  --steam-id auto \
   --output ./converted
 ```
 
@@ -141,7 +169,7 @@ Ferme toujours le jeu avant de remplacer les fichiers et fais une sauvegarde du 
 ```bash
 --identity-mode full    # défaut, recommandé
 --identity-mode object  # objet 0x100BFFEE uniquement
---identity-mode guid    # champ 0x18C6F574 uniquement
+--identity-mode guid    # nom historique : champ 0x18C6F574 / CRC32("rand")
 ```
 
 Les trois ont été confirmés en jeu pendant le reverse engineering ; `full` garde le plus de cohérence avec le compte cible.
